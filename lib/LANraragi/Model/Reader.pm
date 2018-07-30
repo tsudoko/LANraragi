@@ -37,6 +37,25 @@ sub resize_image {
     }
 }
 
+sub images_from_galleryfile {
+    my ( $self, $tempdir, $path ) = @_;
+    open my $f, '<', $path or die "Failed to open $path";
+
+    my @images;
+    while ( <$f> ) {
+        my @ranges = split( ' ', $_ );
+        my $target = shift @ranges;
+        my @timages = images_from_archive( $self, $tempdir, $target, 0 );
+            for my $r ( @ranges ) {
+                my ( $start, $end ) = split( '-', $r );
+                $start--; $end--;
+                push( @images, @timages[$start..$end] );
+            }
+        }
+
+    return @images;
+}
+
 #build_reader_JSON(mojo,id,forceReload,refreshThumbnail)
 #Opens the archive specified by its ID and returns a json matching pages to their
 sub build_reader_JSON {
@@ -59,6 +78,66 @@ sub build_reader_JSON {
     my ( $name, $fpath, $suffix ) = fileparse( $zipfile, qr/\.[^.]*/ );
     my $filename = $name . $suffix;
 
+    my @images;
+    if ( $suffix eq ".gallery" ) {
+        @images = images_from_galleryfile( $self, $tempdir, $zipfile );
+    } else {
+        @images = images_from_archive( $self, $tempdir, $id, $force );
+    }
+
+    my $shasum = LANraragi::Utils::Generic::shasum( $images[0], 1 );
+    $redis->hset( $id, "thumbhash", encode_utf8($shasum) );
+
+#Convert page 1 into a thumbnail for the main reader index if it's not been done already
+#(Or if it fucked up for some reason).
+    my $thumbname = $dirname . "/thumb/" . $id . ".jpg";
+    unless ( -e $thumbname && $thumbreload eq "0" ) {
+
+        $self->LRR_LOGGER->debug(
+"Thumbnail not found at $thumbname ! (force-thumb flag = $thumbreload)"
+        );
+        $self->LRR_LOGGER->debug( "Regenerating from " . $images[0] );
+        mkdir $dirname . "/thumb";
+
+        LANraragi::Utils::Archive::generate_thumbnail( $images[0], $thumbname );
+    }
+
+    #Build a browser-compliant filepath array from @images
+    my @images_browser;
+
+    foreach my $imgpath (@images) {
+
+#We need to sanitize the image's path, in case the folder contains illegal characters,
+#but uri_escape would also nuke the / needed for navigation. Let's solve this with a quick regex search&replace.
+#First, we encode all HTML characters...
+        $imgpath = uri_escape_utf8($imgpath);
+
+        #Then we bring the slashes back.
+        $imgpath =~ s!%2F!/!g;
+
+        #We also now need to strip the /public/ part,
+        #as it's not visible by clients.
+        $imgpath =~ s!public/!!g;
+
+        push @images_browser, $imgpath;
+    }
+
+    #Build json (it's just the images array in a string)
+    my $list = "{\"pages\": [\"" . join( "\",\"", @images_browser ) . "\"]}";
+    return $list;
+}
+
+sub images_from_archive {
+    my ( $self, $tempdir, $id, $force ) = @_;
+
+    my $redis   = LANraragi::Model::Config::get_redis();
+    #Get the path from Redis.
+    my $zipfile = $redis->hget( $id, "file" );
+    $zipfile = LANraragi::Utils::Database::redis_decode($zipfile);
+
+    #Get data from the path
+    my ( $name, $fpath, $suffix ) = fileparse( $zipfile, qr/\.[^.]*/ );
+    my $filename = $name . $suffix;
     my $path = $tempdir . "/" . $id;
 
     if ( -e $path && $force eq "1" ) {
@@ -113,48 +192,7 @@ sub build_reader_JSON {
     );
 
     @images = sort { &expand($a) cmp &expand($b) } @images;
-
-    my $shasum = LANraragi::Utils::Generic::shasum( $images[0], 1 );
-    $redis->hset( $id, "thumbhash", encode_utf8($shasum) );
-
-#Convert page 1 into a thumbnail for the main reader index if it's not been done already
-#(Or if it fucked up for some reason).
-    my $thumbname = $dirname . "/thumb/" . $id . ".jpg";
-    unless ( -e $thumbname && $thumbreload eq "0" ) {
-
-        $self->LRR_LOGGER->debug(
-"Thumbnail not found at $thumbname ! (force-thumb flag = $thumbreload)"
-        );
-        $self->LRR_LOGGER->debug( "Regenerating from " . $images[0] );
-        mkdir $dirname . "/thumb";
-
-        LANraragi::Utils::Archive::generate_thumbnail( $images[0], $thumbname );
-    }
-
-    #Build a browser-compliant filepath array from @images
-    my @images_browser;
-
-    foreach my $imgpath (@images) {
-
-#We need to sanitize the image's path, in case the folder contains illegal characters,
-#but uri_escape would also nuke the / needed for navigation. Let's solve this with a quick regex search&replace.
-#First, we encode all HTML characters...
-        $imgpath = uri_escape_utf8($imgpath);
-
-        #Then we bring the slashes back.
-        $imgpath =~ s!%2F!/!g;
-
-        #We also now need to strip the /public/ part,
-        #as it's not visible by clients.
-        $imgpath =~ s!public/!!g;
-
-        push @images_browser, $imgpath;
-    }
-
-    #Build json (it's just the images array in a string)
-    my $list = "{\"pages\": [\"" . join( "\",\"", @images_browser ) . "\"]}";
-    return $list;
-
+    return @images;
 }
 
 1;

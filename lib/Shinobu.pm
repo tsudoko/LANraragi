@@ -130,7 +130,7 @@ sub get_archive_list {
             wanted => sub {
 
                 return if -d $_;    #Directories are excluded on the spot
-                if ( $_ =~ /^.+\.(?:zip|rar|7z|tar|tar\.gz|lzma|xz|cbz|cbr)$/ )
+                if ( $_ =~ /^.+\.(?:zip|rar|7z|tar|tar\.gz|lzma|xz|cbz|cbr|gallery)$/ )
                 {
                     push @filez, $_;
                 }
