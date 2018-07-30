@@ -46,12 +46,12 @@ sub images_from_galleryfile {
         my @ranges = split( ' ', $_ );
         my $target = shift @ranges;
         my @timages = images_from_archive( $self, $tempdir, $target, 0 );
-            for my $r ( @ranges ) {
-                my ( $start, $end ) = split( '-', $r );
-                $start--; $end--;
-                push( @images, @timages[$start..$end] );
-            }
+        foreach my $r ( @ranges ) {
+            my ( $start, $end ) = split( '-', $r );
+            $start--; $end--;
+            push( @images, @timages[$start..$end] );
         }
+    }
 
     return @images;
 }
