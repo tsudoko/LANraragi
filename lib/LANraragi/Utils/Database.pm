@@ -35,6 +35,7 @@ sub add_archive_to_redis {
     $redis->hset( $id, "title", encode_utf8($title) );
     $redis->hset( $id, "tags",  encode_utf8($tags) );
     $redis->hset( $id, "file",  encode_utf8($file) );
+    $redis->hset( $id, "type", "regular" );
     $redis->hset( $id, "isnew", "block" );
 
     #New file in collection, so this flag is set.

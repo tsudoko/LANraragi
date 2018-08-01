@@ -276,6 +276,20 @@ sub build_json_cache {
 
     #Iterate on hashes to get their tags
     foreach my $id (@keys) {
+        if ( ( $redis->hget( $id, "type" ) or "regular" ) ne "regular" ) {
+            my %hash = $redis->hgetall($id);
+            my ( $title, $tags, $isnew ) =
+              @hash{qw(title tags isnew)};
+
+            ( $_ = LANraragi::Utils::Database::redis_decode($_) )
+              for ( $title, $tags );
+
+            $json .= &to_json({arcid => $id, isnew => $isnew, title => $title, tags => $tags});
+            $json .= ",";
+            $archivecount--; # this is ugly
+            next;
+        }
+
         my $path = $redis->hget( $id, "file" );
         $path = LANraragi::Utils::Database::redis_decode($path);
 

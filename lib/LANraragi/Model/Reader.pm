@@ -11,6 +11,7 @@ use File::Path qw(remove_tree);
 use Encode;
 use File::Find::utf8 qw(find);
 use URI::Escape;
+use Mojo::JSON qw(decode_json);
 
 use LANraragi::Model::Config;
 
@@ -37,20 +38,16 @@ sub resize_image {
     }
 }
 
-sub images_from_galleryfile {
-    my ( $self, $tempdir, $path ) = @_;
-    open my $f, '<', $path or die "Failed to open $path";
+sub images_from_composite {
+    my ( $self, $tempdir, $id ) = @_;
+    my $redis = LANraragi::Model::Config::get_redis();
 
+    my $ranges = decode_json( $redis->hget( $id, "pages" ) );
     my @images;
-    while ( <$f> ) {
-        my @ranges = split( ' ', $_ );
-        my $target = shift @ranges;
+    foreach my $r ( @$ranges ) {
+        my ( $target, $start, $end ) = @$r;
         my @timages = images_from_archive( $self, $tempdir, $target, 0 );
-        foreach my $r ( @ranges ) {
-            my ( $start, $end ) = split( '-', $r );
-            $start--; $end--;
-            push( @images, @timages[$start..$end] );
-        }
+        push( @images, @timages[$start..$end] );
     }
 
     return @images;
@@ -70,17 +67,9 @@ sub build_reader_JSON {
     #We opened this id in the reader, so we can't mark it as "new" anymore.
     $redis->hset( $id, "isnew", "none" );
 
-    #Get the path from Redis.
-    my $zipfile = $redis->hget( $id, "file" );
-    $zipfile = LANraragi::Utils::Database::redis_decode($zipfile);
-
-    #Get data from the path
-    my ( $name, $fpath, $suffix ) = fileparse( $zipfile, qr/\.[^.]*/ );
-    my $filename = $name . $suffix;
-
     my @images;
-    if ( $suffix eq ".gallery" ) {
-        @images = images_from_galleryfile( $self, $tempdir, $zipfile );
+    if ( $redis->hget( $id, "type" ) eq "composite" ) {
+        @images = images_from_composite( $self, $tempdir, $id );
     } else {
         @images = images_from_archive( $self, $tempdir, $id, $force );
     }
