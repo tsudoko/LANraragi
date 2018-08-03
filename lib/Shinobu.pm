@@ -16,7 +16,7 @@ use feature qw(say);
 use Cwd;
 
 use FindBin;
-use Mojo::JSON qw(to_json);
+use Mojo::JSON qw(to_json decode_json);
 
 BEGIN {
     unshift @INC, "$FindBin::Bin/../lib";
@@ -284,7 +284,25 @@ sub build_json_cache {
             ( $_ = LANraragi::Utils::Database::redis_decode($_) )
               for ( $title, $tags );
 
-            $json .= &to_json({arcid => $id, isnew => $isnew, title => $title, tags => $tags});
+            my $pages = decode_json( $hash{'pages'} );
+            my @jpages;
+            foreach my $p ( @$pages ) {
+                my %jp = (
+                    title => LANraragi::Utils::Database::redis_decode( $redis->hget( $p->[0], "title" ) ),
+                    id => $p->[0],
+                    from => $p->[1],
+                    to => $p->[2],
+                );
+                $jpages[scalar @jpages] = \%jp;
+            }
+
+            $json .= &to_json({
+                arcid => $id,
+                isnew => $isnew,
+                title => $title,
+                tags => $tags,
+                pages => \@jpages
+            });
             $json .= ",";
             $archivecount--; # this is ugly
             next;
