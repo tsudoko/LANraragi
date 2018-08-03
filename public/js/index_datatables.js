@@ -139,7 +139,7 @@ function seriesColumnDisplay(data, type, full, meta) {
 function actionColumnDisplay(data, type, full, meta) {
 	if (type == "display") {
 		return '<div style="font-size:16px">'
-			+ '<a href="./api/servefile?id=' + data.arcid + '" title="Download this archive."><i class="fa fa-save" style="margin-right:2px"></i><a/>'
+			+ (data.pages === undefined ? ('<a href="./api/servefile?id=' + data.arcid + '" title="Download this archive."><i class="fa fa-save" style="margin-right:2px"></i><a/>') : '<i class="fa fa-save" style="margin-right:2px; visibility:hidden"></i>')
 			+ '<a href="./edit?id=' + data.arcid + '" title="Edit this archive\'s tags and data."><i class="fa fa-edit"></i><a/></div>';
 	}
 
