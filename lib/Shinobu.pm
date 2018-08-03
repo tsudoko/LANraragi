@@ -276,7 +276,7 @@ sub build_json_cache {
 
     #Iterate on hashes to get their tags
     foreach my $id (@keys) {
-        if ( ( $redis->hget( $id, "type" ) or "regular" ) ne "regular" ) {
+        if ( ( $redis->hget( $id, "type" ) or "archive" ) ne "archive" ) {
             my %hash = $redis->hgetall($id);
             my ( $title, $tags, $isnew ) =
               @hash{qw(title tags isnew)};
