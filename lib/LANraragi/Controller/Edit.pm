@@ -5,6 +5,7 @@ use File::Basename;
 use Redis;
 use Encode;
 use Template;
+use Mojo::JSON qw(decode_json);
 
 use LANraragi::Utils::Generic;
 use LANraragi::Utils::Archive;
@@ -131,6 +132,8 @@ sub index {
             tags      => $tags,
             file      => $file,
             thumbhash => $thumbhash,
+            type      => ($hash{'type'} or "archive"),
+            pages     => decode_json( $redis->hget( $id, "pages" ) ),
             plugins   => \@pluginlist,
             title     => $self->LRR_CONF->get_htmltitle,
             cssdrop   => LANraragi::Utils::Generic::generate_themes

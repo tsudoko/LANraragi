@@ -45,6 +45,23 @@
 					<input id='title' class='stdinput' type='text' style='width:100%' maxlength='255' size='20' value="[% arctitle %]" name='title'>
 			  	</td></tr>
 
+				[% type %]
+				[% IF type == 'composite' %]
+					[% IF pages %]
+						[% FOREACH p IN pages %]
+			  				<tr><td style='text-align:left; width:100px'>Source [% loop.index() + 1 %]:</td><td style="display: flex">
+								<input class='stdinput' type='text' style='flex: 9' maxlength='40' size='20' value="[% p.0 %]" name='source-[% loop.index() %]-id'>
+								<input class='stdinput' type='text' style='flex: 1' maxlength='8' size='5' value="[% p.1 %]" name='source-[% loop.index() %]-from'> - 
+								<input class='stdinput' type='text' style='flex: 1' maxlength='8' size='5' value="[% p.2 %]" name='source-[% loop.index() %]-to'>
+							</td></tr>
+						[% END %]
+					[% END %]
+					<tr><td>
+						<!-- TODO make this work -->
+						<input type='button' name='tag_import' value='Add More' onclick="TODO addCompSource();" class='stdbtn' style='min-width:90px'></input>
+					</td></tr>
+				[% END %]
+
 				<tr><td style='text-align:left; width:100px; vertical-align:top'>Tags <span style="font-size:6pt">(separated by hyphens, i.e : tag1, tag2)</span> :
 				</td>
 				<td>
